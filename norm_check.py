@@ -164,6 +164,9 @@ def run_cc(cc_file):
         else:
             f = os.path.join(BASE, "实车点云", "%s.pcd" % name)
         r = locate(f, verbose=False)
+        if not r["best"]:
+            print("%-12s   该场景未检出端口，跳过" % name)
+            continue
         for key, dd in ports.items():
             if "n" in dd:
                 n_gt = np.array(dd["n"], float)

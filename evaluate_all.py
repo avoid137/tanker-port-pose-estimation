@@ -31,6 +31,8 @@ def assess(name, f, gt_ly=None, gt_ry=None):
     row = dict(scene=name, time=round(r["time"], 1), n_ports=r["n_ports"],
                n_pairs=r["n_pairs"], paired=bool(r["best"]))
     if not r["best"]:
+        row["pass_axes20"] = False
+        row["pass_time60"] = True
         return row, r
     for key, gt in (("ly", gt_ly), ("ry", gt_ry)):
         o = r["best"][key]
@@ -99,11 +101,14 @@ def main():
         n_pass += int(ok)
         mark = "PASS" if ok else "FAIL"
         disp = name.replace("ICP_", "")
-        print("%-9s %5.1fs %7.2f %8.2f %7.2f %7.2f  (%6.2f/%6.2f) (%6.2f/%6.2f) %7.2f° %7.2f°  %s (GT落云 %.1f/%.1fmm)%s"
-              % (disp, row["time"], row["ly_emax"], row["ry_emax"], row["ly_e3d"], row["ry_e3d"],
-                 row["ly_pitch"], row["ly_yaw"], row["ry_pitch"], row["ry_yaw"],
-                 row["normal_angle"], row["perp_off"], mark, d_gt_ly, d_gt_ry,
-                 "  [遮挡修复]" if r["best"]["ly"].get("refined") or r["best"]["ry"].get("refined") else ""))
+        if "ly_emax" in row:
+            print("%-9s %5.1fs %7.2f %8.2f %7.2f %7.2f  (%6.2f/%6.2f) (%6.2f/%6.2f) %7.2f° %7.2f°  %s (GT落云 %.1f/%.1fmm)%s"
+                  % (disp, row["time"], row["ly_emax"], row["ry_emax"], row["ly_e3d"], row["ry_e3d"],
+                     row["ly_pitch"], row["ly_yaw"], row["ry_pitch"], row["ry_yaw"],
+                     row["normal_angle"], row["perp_off"], mark, d_gt_ly, d_gt_ry,
+                     "  [遮挡修复]" if r["best"]["ly"].get("refined") or r["best"]["ry"].get("refined") else ""))
+        else:
+            print("%-9s %5.1fs  ---- 该帧未配对/未检出，无法评估圆心 ----  %s" % (disp, row["time"], mark))
     print("\n  逐轴≤20mm 且 ≤60s 达标：%d/10" % n_pass)
 
     json.dump({"rows": rows, "results": detail},
