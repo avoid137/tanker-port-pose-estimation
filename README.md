@@ -162,3 +162,27 @@ r["best"]["ly"]["normal"]    # 盖面法向单位向量
 5. **观测半径亏缺自动触发的已知半径 RANSAC 遮挡修复** — 触发机制与守卫设计（位移限制/内点门槛/固定种子）为工程贡献
 
 （对比对象：PCL SACMODEL_CIRCLE2D/3D 盲跑方案、鹤管 2D 视觉专利、欧式聚类+圆柱拟合专利、深度学习圆基元提取等，详见项目复盘文档。）
+
+---
+
+## 八、本地更新仓库（绕过 TLS 吊销检查）
+
+本机网络链路（含 `WattToolkit` 代理）会拦截 CRL/OCSP 证书吊销检查，导致 `git push`/`git fetch` 在 TLS 握手阶段报：
+
+```
+schannel: next InitializeSecurityContext failed: CRYPT_E_NO_REVOCATION_CHECK (0x80092012)
+```
+
+`http.schannelCheckRevoke=false` 在当前 git 2.55（Windows）环境无效。可用以下方式绕过（GitHub 凭证已存于本机 Windows 凭据管理器，免交互读取）：
+
+```bash
+# 1) 让 git 用 wincred 读取已存的 GitHub token（仓库本地配置，不含明文 token）
+git config credential.helper wincred
+
+# 2) push / fetch 时关闭整体证书校验，以绕过吊销检查的硬失败
+git -c http.sslVerify=false push -u origin main
+# 拉取：
+git -c http.sslVerify=false fetch origin
+```
+
+> 说明：本机 `GIT_TERMINAL_PROMPT=0` 禁止交互输密码，因此必须走 `wincred`（凭据管理器里的 `git:https://github.com` 条目）。**不要把 GitHub token 明文写进命令或 config**；本仓库上云即用此法完成，未落盘任何 token。
