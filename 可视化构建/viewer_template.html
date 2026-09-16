@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>罐车加注口 / 回收口 位姿估计 · 三维可视化</title>
+<style>
+  :root{
+    --bg:#0d1117; --panel:#161b22; --panel2:#1c2230; --line:#2a3240;
+    --fg:#e6edf3; --dim:#8b949e; --red:#ff5252; --amb:#ffb020; --grn:#3fb950;
+    --cyan:#58a6ff;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;background:var(--bg);color:var(--fg);
+    font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;overflow:hidden}
+  #app{display:flex;height:100%}
+  /* ---------- 侧栏 ---------- */
+  #side{width:330px;min-width:330px;background:var(--panel);border-right:1px solid var(--line);
+    display:flex;flex-direction:column;overflow:hidden}
+  #brand{padding:14px 16px 10px;border-bottom:1px solid var(--line)}
+  #brand h1{font-size:15px;font-weight:600;letter-spacing:.3px}
+  #brand p{font-size:11px;color:var(--dim);margin-top:3px}
+  #scenes{overflow-y:auto;padding:8px;flex:0 0 auto;max-height:38%}
+  .sc{display:flex;align-items:center;gap:8px;padding:7px 9px;border-radius:6px;cursor:pointer;
+    border:1px solid transparent;font-size:12.5px;margin-bottom:3px}
+  .sc:hover{background:var(--panel2)}
+  .sc.on{background:#1f6feb22;border-color:#1f6feb88}
+  .sc .nm{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .sc .er{font-size:10.5px;color:var(--dim);font-variant-numeric:tabular-nums}
+  .sc .er.bad{color:var(--red)}
+  .sc .er.ok{color:var(--grn)}
+  .tag{font-size:9.5px;padding:1px 5px;border-radius:3px;background:#30475e;color:#9fb6cc}
+  .tag.src{background:#3d2b00;color:#ffcf70}
+  /* ---------- 指标 ---------- */
+  #info{padding:10px 14px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);
+    overflow-y:auto;flex:0 0 auto;max-height:31%}
+  #info h2{font-size:12px;color:var(--dim);font-weight:600;margin-bottom:7px;letter-spacing:.5px}
+  table.k{width:100%;border-collapse:collapse;font-size:12px;font-variant-numeric:tabular-nums}
+  table.k td{padding:3px 0;border-bottom:1px solid #22283422}
+  table.k td:first-child{color:var(--dim);width:44%}
+  table.k td:last-child{text-align:right;font-weight:500}
+  .pill{display:inline-block;padding:1px 6px;border-radius:9px;font-size:10.5px;font-weight:600}
+  .pill.ok{background:#3fb95026;color:var(--grn)}
+  .pill.no{background:#ff525226;color:var(--red)}
+  .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:4px;vertical-align:-1px}
+  /* ---------- 图层 ---------- */
+  #layers{padding:9px 14px;border-bottom:1px solid var(--line);flex:0 0 auto}
+  #layers label{display:flex;align-items:center;gap:7px;font-size:12px;padding:3px 0;cursor:pointer;color:#c9d1d9}
+  #layers input{accent-color:var(--cyan);width:13px;height:13px}
+  /* ---------- 视角 ---------- */
+  #views{padding:9px 12px;display:flex;flex-wrap:wrap;gap:6px;flex:0 0 auto}
+  #views button{flex:1 1 44%;padding:6px 4px;font-size:11.5px;border-radius:5px;cursor:pointer;
+    background:var(--panel2);color:#c9d1d9;border:1px solid var(--line);font-family:inherit}
+  #views button:hover{background:#243044;border-color:#3b4a61}
+  #foot{margin-top:auto;padding:9px 14px;font-size:10.5px;color:#5b6472;line-height:1.6}
+  /* ---------- 视口 ---------- */
+  #view{flex:1;position:relative;background:radial-gradient(circle at 50% 40%,#121926,#0a0e14 80%)}
+  #cv{display:block;width:100%;height:100%}
+  #hint{position:absolute;left:14px;bottom:12px;font-size:11px;color:#5b6472;pointer-events:none}
+  #legend{position:absolute;right:14px;top:12px;background:#0d1117cc;border:1px solid var(--line);
+    border-radius:7px;padding:9px 12px;font-size:11.5px;line-height:1.9;backdrop-filter:blur(4px)}
+  #legend div{display:flex;align-items:center;gap:7px}
+  .sw{width:16px;height:3px;border-radius:2px}
+  #labels{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+  .lbl{position:absolute;left:0;top:0;white-space:nowrap;font-size:11.5px;font-weight:600;
+    padding:3px 8px;border-radius:5px;background:rgba(11,15,21,.87);border:1px solid #333;
+    font-variant-numeric:tabular-nums}
+  #loading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    background:#0d1117;font-size:13px;color:var(--dim);z-index:9}
+  #err{position:absolute;inset:0;display:none;align-items:center;justify-content:center;
+    color:var(--red);font-size:13px;padding:30px;text-align:center;z-index:10;background:#0d1117}
+</style>
+</head>
+<body>
+<div id="app">
+  <aside id="side">
+    <div id="brand">
+      <h1>罐车端口位姿估计 · 三维可视化</h1>
+      <p>平面区域生长 + 尺寸先验配对 &nbsp;|&nbsp; 圆心 / 法向 / 拟合圆盘</p>
+    </div>
+    <div id="scenes"></div>
+    <div id="layers">
+      <label><input type="checkbox" id="cCloud" checked> 点云</label>
+      <label><input type="checkbox" id="cDet" checked> 检测结果（拟合圆盘 + 法向）</label>
+      <label><input type="checkbox" id="cGt" checked> 真值（手选圆心 / 实测法向）</label>
+      <label><input type="checkbox" id="cErr" checked> 误差连线</label>
+      <label><input type="checkbox" id="cOth"> 其他候选盘（算法筛选过程）</label>
+      <label><input type="checkbox" id="cSpin"> 自动旋转</label>
+    </div>
+    <div id="views">
+      <button data-v="iso">等轴测</button>
+      <button data-v="port">端口正视</button>
+      <button data-v="side">罐侧视</button>
+      <button data-v="top">顶视</button>
+      <button data-v="focus">聚焦两口</button>
+      <button data-v="fit">全场景适配</button>
+      <button id="btnTour" style="flex:1 1 100%">▶ 自动巡场（答辩播放）</button>
+      <button id="btnShot" style="flex:1 1 100%">⤓ 保存当前视图为 PNG</button>
+    </div>
+    <div id="info"></div>
+    <div id="foot">左键拖拽 = 旋转 &nbsp;·&nbsp; 滚轮 = 缩放 &nbsp;·&nbsp; 右键拖拽 = 平移<br>数据来源：result_final.json / gt_manual.json / coordinates.txt</div>
+  </aside>
+  <main id="view">
+    <canvas id="cv"></canvas>
+    <div id="legend">
+      <div><span class="sw" style="background:#ff5252"></span>回收口 ly（r≈59mm）</div>
+      <div><span class="sw" style="background:#ffb020"></span>加注口 ry（r≈79mm）</div>
+      <div><span class="sw" style="background:#3fb950"></span>真值（CC 手选 / 官方）</div>
+    </div>
+    <div id="labels"></div>
+    <div id="hint">拖拽旋转 · 滚轮缩放 · 右键平移</div>
+    <div id="loading">正在解析点云数据 …</div>
+    <div id="err"></div>
+  </main>
+</div>
+
+<script>/*__THREE__*/</script>
+<script>/*__DATA__*/</script>
+<script>
+(function(){
+"use strict";
+try{
+  var DATA = window.VIEW_DATA;
+  if(!DATA || !DATA.scenes) throw new Error("未找到内嵌数据");
+
+  /* ================= 基础 ================= */
+  var cv = document.getElementById('cv');
+  var renderer = new THREE.WebGLRenderer({canvas:cv, antialias:true, preserveDrawingBuffer:true});
+  renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+  var scene  = new THREE.Scene();
+  var camera = new THREE.PerspectiveCamera(45, 1, 1, 200000);
+
+  var root = new THREE.Group();      scene.add(root);
+  var gCloud = new THREE.Group();    root.add(gCloud);
+  var gDet   = new THREE.Group();    root.add(gDet);
+  var gGt    = new THREE.Group();    root.add(gGt);
+  var gErr   = new THREE.Group();    root.add(gErr);
+  var gOth   = new THREE.Group();    root.add(gOth);
+
+  /* ---- 自写轨道控制（不依赖 OrbitControls，保持单文件） ---- */
+  var cam = {target:new THREE.Vector3(), dist:2000, theta:-0.9, phi:0.88, up:new THREE.Vector3(0,0,1)};
+  function applyCam(){
+    var sp = Math.sin(cam.phi), cp = Math.cos(cam.phi);
+    var dir = new THREE.Vector3(sp*Math.cos(cam.theta), sp*Math.sin(cam.theta), cp);
+    camera.up.copy(cam.up);
+    camera.position.copy(cam.target).addScaledVector(dir, cam.dist);
+    camera.lookAt(cam.target);
+  }
+  var drag=null;
+  cv.addEventListener('mousedown',function(e){
+    drag={x:e.clientX,y:e.clientY,b:e.button,
+          t:cam.target.clone(), th:cam.theta, ph:cam.phi, up:cam.up.clone()};
+    e.preventDefault();
+  });
+  window.addEventListener('mousemove',function(e){
+    if(!drag) return;
+    var dx=e.clientX-drag.x, dy=e.clientY-drag.y;
+    if(drag.b===0){
+      cam.theta = drag.th - dx*0.007;
+      cam.phi   = Math.max(0.02, Math.min(Math.PI-0.02, drag.ph - dy*0.007));
+    }else{
+      // 平移：沿相机右/上方向
+      var right=new THREE.Vector3(), upv=new THREE.Vector3();
+      camera.getWorldDirection(new THREE.Vector3());
+      right.setFromMatrixColumn(camera.matrix,0);
+      upv.setFromMatrixColumn(camera.matrix,1);
+      var k=cam.dist/700;
+      cam.target.copy(drag.t).addScaledVector(right,-dx*k).addScaledVector(upv,dy*k);
+    }
+    applyCam();
+  });
+  window.addEventListener('mouseup',function(){drag=null;});
+  cv.addEventListener('contextmenu',function(e){e.preventDefault();});
+  cv.addEventListener('wheel',function(e){
+    e.preventDefault();
+    cam.dist *= Math.exp(Math.sign(e.deltaY)*0.09);
+    cam.dist = Math.max(30, Math.min(60000, cam.dist));
+    applyCam();
+  },{passive:false});
+
+  /* ================= 数据解包 ================= */
+  function b64ToInt16(b64){
+    var bin = atob(b64), n = bin.length, u8 = new Uint8Array(n);
+    for(var i=0;i<n;i++) u8[i]=bin.charCodeAt(i);
+    return new Int16Array(u8.buffer, 0, n>>1);
+  }
+  function v3(a){ return new THREE.Vector3(a[0],a[1],a[2]); }
+
+  /* ================= 几何构件 ================= */
+  // 在圆心 c、法向 n 的平面内画半径 r 的圆（LineLoop）
+  function makeRing(c, n, r, color, dashed, seg){
+    seg = seg||128;
+    var nv = v3(n).normalize();
+    var helper = Math.abs(nv.z) < 0.9 ? new THREE.Vector3(0,0,1) : new THREE.Vector3(1,0,0);
+    var u = new THREE.Vector3().crossVectors(helper, nv).normalize();
+    var v = new THREE.Vector3().crossVectors(nv, u).normalize();
+    var pts=[], cc=v3(c);
+    for(var i=0;i<=seg;i++){
+      var a = i/seg*Math.PI*2;
+      pts.push(cc.clone().addScaledVector(u, r*Math.cos(a)).addScaledVector(v, r*Math.sin(a)));
+    }
+    var g = new THREE.BufferGeometry().setFromPoints(pts);
+    var m = dashed
+      ? new THREE.LineDashedMaterial({color:color, dashSize:14, gapSize:9})
+      : new THREE.LineBasicMaterial({color:color});
+    var l = new THREE.Line(g, m);
+    if(dashed) l.computeLineDistances();
+    return l;
+  }
+  function makeArrow(orig, dir, len, color, head){
+    head = head||len*0.22;
+    var a = new THREE.ArrowHelper(v3(dir).normalize(), v3(orig), len, color, head, head*0.5);
+    a.line.material.linewidth = 2;
+    return a;
+  }
+  function makeDot(c, color, size){
+    var m = new THREE.Mesh(new THREE.SphereGeometry(size||9, 14, 10),
+      new THREE.MeshBasicMaterial({color:color}));
+    m.position.copy(v3(c));
+    return m;
+  }
+  function makeSeg(a, b, color){
+    var g = new THREE.BufferGeometry().setFromPoints([v3(a), v3(b)]);
+    return new THREE.Line(g, new THREE.LineBasicMaterial({color:color}));
+  }
+  function clear(g){
+    while(g.children.length){
+      var o=g.children.pop();
+      if(o.geometry) o.geometry.dispose();
+      if(o.material) o.material.dispose();
+    }
+  }
+
+  /* ================= 场景构建 ================= */
+  var COL = {ly:0xff5252, ry:0xffb020, gt:0x3fb950, err:0xffff00, oth:0x5b7083};
+  var cur = null;
+  // URL 参数：?scene=3&view=port&spin=1&oth=1  便于演示与批量截图
+  var Q = {};
+  location.search.replace(/^\?/,'').split('&').forEach(function(kv){
+    if(!kv) return; var a=kv.split('='); Q[a[0]]=decodeURIComponent(a[1]||'');
+  });
+  if(Q.spin==='1'){ document.getElementById('cSpin').checked=true; }
+  if(Q.oth==='1'){ document.getElementById('cOth').checked=true; }
+  if(Q.gt==='0'){ document.getElementById('cGt').checked=false; }
+  if(Q.cloud==='0'){ document.getElementById('cCloud').checked=false; }
+
+  function buildCloud(sc){
+    clear(gCloud);
+    var q = b64ToInt16(sc.points);
+    var n = q.length/3;
+    var pos = new Float32Array(n*3), col = new Float32Array(n*3);
+    var ox=sc.origin[0], oy=sc.origin[1], oz=sc.origin[2];
+    var zmin=1e9, zmax=-1e9;
+    for(var i=0;i<n;i++){ var z=q[i*3+2]+oz; if(z<zmin)zmin=z; if(z>zmax)zmax=z; }
+    var zr = (zmax-zmin)||1;
+    // 端口盘高亮：落在「圆心 + 半径内 + 贴合法向平面」的点染成端口色
+    var HL=[];
+    ['ly','ry'].forEach(function(k){
+      var o=sc[k]; if(!o) return;
+      HL.push({c:new THREE.Vector3(o.center[0],o.center[1],o.center[2]),
+               n:new THREE.Vector3(o.normal[0],o.normal[1],o.normal[2]).normalize(),
+               r:o.radius,
+               col: k==='ly' ? [1.00,0.36,0.36] : [1.00,0.72,0.18]});
+    });
+    for(var j=0;j<n;j++){
+      pos[j*3]  = q[j*3]  +ox;
+      pos[j*3+1]= q[j*3+1]+oy;
+      pos[j*3+2]= q[j*3+2]+oz;
+      var t = (pos[j*3+2]-zmin)/zr;
+      var r0=0.20+0.42*t, g0=0.36+0.46*t, b0=0.60+0.30*t;
+      if(HL.length){
+        var px=pos[j*3], py=pos[j*3+1], pz=pos[j*3+2];
+        for(var h=0;h<HL.length;h++){
+          var H=HL[h];
+          var dx=px-H.c.x, dy=py-H.c.y, dz=pz-H.c.z;
+          var hn = dx*H.n.x + dy*H.n.y + dz*H.n.z;
+          if(hn > 16 || hn < -16) continue;                 // 须贴近盘面
+          var rr2 = dx*dx+dy*dy+dz*dz - hn*hn;
+          if(rr2 <= (H.r+7)*(H.r+7)){ r0=H.col[0]; g0=H.col[1]; b0=H.col[2]; break; }
+        }
+      }
+      col[j*3]=r0; col[j*3+1]=g0; col[j*3+2]=b0;
+    }
+    var g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(pos,3));
+    g.setAttribute('color',    new THREE.BufferAttribute(col,3));
+    var mat = new THREE.PointsMaterial({size:11, vertexColors:true, sizeAttenuation:true});
+    gCloud.add(new THREE.Points(g, mat));
+  }
+
+  /* ---- HTML 叠层标签（每帧投影到屏幕，比 Sprite 更锐利） ---- */
+  var labelsEl = document.getElementById('labels');
+  var labels = [];
+  function addLabel(text, colorCss, pos){
+    var el=document.createElement('div');
+    el.className='lbl'; el.textContent=text;
+    el.style.color=colorCss; el.style.borderColor=colorCss+'88';
+    labelsEl.appendChild(el);
+    labels.push({el:el, pos:(pos.isVector3 ? pos.clone() : v3(pos))});
+  }
+  function clearLabels(){
+    labelsEl.innerHTML=''; labels=[];
+  }
+  function updateLabels(){
+    if(!gDet.visible){ labelsEl.style.display='none'; return; }
+    labelsEl.style.display='block';
+    var W=cv.clientWidth, H=cv.clientHeight;
+    for(var i=0;i<labels.length;i++){
+      var L=labels[i], p=L.pos.clone().project(camera);
+      if(i===0 && Q.dbg==='1'){
+        document.getElementById('hint').textContent='dbg ndc=('+p.x.toFixed(3)+','+p.y.toFixed(3)+','+p.z.toFixed(3)
+          +') W='+W+' H='+H+' dist='+cam.dist.toFixed(0)+' wp='+L.pos.toArray().map(function(v){return v.toFixed(0);}).join(',');
+      }
+      if(p.z>1 || p.z<-1){ L.el.style.display='none'; continue; }
+      L.el.style.display='block';
+      var x=(p.x*0.5+0.5)*W, y=(-p.y*0.5+0.5)*H;
+      if(x<-200||y<-60||x>W+200||y>H+60){ L.el.style.display='none'; continue; }
+      L.el.style.transform='translate(-50%,-50%) translate('+x.toFixed(1)+'px,'+y.toFixed(1)+'px)';
+    }
+  }
+
+  function buildDet(sc){
+    clear(gDet); clear(gGt); clear(gErr); clear(gOth); clearLabels();
+    var b0=sc.bbox[0], b1=sc.bbox[1];
+    var diag=Math.hypot(b1[0]-b0[0], b1[1]-b0[1], b1[2]-b0[2]);
+    [['ly',COL.ly,'#ff5252','回收口 ly'],['ry',COL.ry,'#ffb020','加注口 ry']].forEach(function(t){
+      var k=t[0], color=t[1], o=sc[k];
+      if(!o) return;
+      gDet.add(makeRing(o.center, o.normal, o.radius, color, false));
+      gDet.add(makeDot(o.center, color, Math.max(5, diag*0.004)));
+      gDet.add(makeArrow(o.center, o.normal, Math.max(80, diag*0.082), color));
+      // 拟合圆盘半透明填充（让"盘"这个概念看得见）
+      var nv=v3(o.normal).normalize();
+      var h = Math.abs(nv.z)<0.9 ? new THREE.Vector3(0,0,1) : new THREE.Vector3(1,0,0);
+      var u = new THREE.Vector3().crossVectors(h,nv).normalize();
+      var v = new THREE.Vector3().crossVectors(nv,u).normalize();
+      var seg=48, verts=[], idx=[];
+      verts.push(0,0,0);
+      for(var i=0;i<=seg;i++){
+        var a=i/seg*Math.PI*2;
+        var p=u.clone().multiplyScalar(o.radius*Math.cos(a))
+               .addScaledVector(v, o.radius*Math.sin(a));
+        verts.push(p.x,p.y,p.z);
+      }
+      for(var f=1;f<=seg;f++) idx.push(0,f,f+1);
+      var dg=new THREE.BufferGeometry();
+      dg.setAttribute('position', new THREE.Float32BufferAttribute(verts,3));
+      dg.setIndex(idx); dg.computeVertexNormals();
+      var dm=new THREE.MeshBasicMaterial({color:color, transparent:true, opacity:0.16,
+        side:THREE.DoubleSide, depthWrite:false});
+      var mesh=new THREE.Mesh(dg,dm); mesh.position.copy(v3(o.center));
+      gDet.add(mesh);
+
+      // 标签：名称 + 半径 + 误差
+      var txt = t[3]+'  r='+o.radius.toFixed(1)+'mm';
+      if(o.err_axis!==undefined) txt += '  Δ='+o.err_axis.toFixed(2)+'mm';
+      var lp = v3(o.center).clone()
+              .addScaledVector(v3(o.normal).normalize(), Math.max(130, o.radius*2.1));
+      addLabel(txt, t[2], lp);
+
+      if(o.gt_center){
+        gGt.add(makeRing(o.gt_center, o.gt_normal||o.normal, o.radius, COL.gt, true));
+        gGt.add(makeDot(o.gt_center, COL.gt, Math.max(4, diag*0.0032)));
+        if(o.gt_normal) gGt.add(makeArrow(o.gt_center, o.gt_normal, Math.max(80, diag*0.082), COL.gt));
+        gErr.add(makeSeg(o.center, o.gt_center, COL.err));
+      }
+    });
+    (sc.others||[]).forEach(function(rec){
+      var c=[rec[0],rec[1],rec[2]], r=rec[3];
+      var hit=false;
+      ['ly','ry'].forEach(function(k){
+        if(sc[k] && Math.hypot(sc[k].center[0]-c[0],sc[k].center[1]-c[1],sc[k].center[2]-c[2])<1.0) hit=true;
+      });
+      if(!hit) gOth.add(makeRing(c, [0,0,1], r, COL.oth, false, 48));
+    });
+  }
+
+  function fitView(sc, mode){
+    var b0=sc.bbox[0], b1=sc.bbox[1];
+    var ctr=new THREE.Vector3((b0[0]+b1[0])/2,(b0[1]+b1[1])/2,(b0[2]+b1[2])/2);
+    var diag=Math.hypot(b1[0]-b0[0], b1[1]-b0[1], b1[2]-b0[2]);
+    cam.up.set(0,0,1);
+    var setDir=function(dir, d){
+      dir=dir.clone().normalize();
+      cam.phi   = Math.acos(Math.max(-1, Math.min(1, dir.z)));
+      cam.theta = Math.atan2(dir.y, dir.x);
+      cam.dist  = d;
+      applyCam();
+    };
+    // 聚焦两口：相机方向固定在「口连线 × 罐面法向」构成的平面内，
+    // 保证两口在屏幕上横向展开，且斜俯视便于看清盘面
+    if(mode==='focus' && sc.ly && sc.ry){
+      var a=v3(sc.ly.center), b=v3(sc.ry.center);
+      ctr.copy(a).add(b).multiplyScalar(0.5);
+      var axis=new THREE.Vector3().subVectors(b,a).normalize();
+      var nv=v3(sc.ly.normal).normalize();
+      var side=new THREE.Vector3().crossVectors(axis,nv).normalize();
+      var dir=side.clone().multiplyScalar(0.90).addScaledVector(nv,0.46);
+      cam.target.copy(ctr);
+      setDir(dir, Math.max(760, a.distanceTo(b)*2.15 + 340, diag*0.58));
+      return;
+    }
+    cam.target.copy(ctr);
+    if(mode==='port')      setDir(new THREE.Vector3(0.18,-0.42,1), diag*1.15);
+    else if(mode==='side') setDir(new THREE.Vector3(1,-0.12,0.20), diag*1.30);
+    else if(mode==='top')  setDir(new THREE.Vector3(0.10,0.45,1),  diag*1.20);
+    else                   setDir(new THREE.Vector3(0.60,-0.85,0.62), diag*1.30);
+  }
+
+  /* ================= 侧栏渲染 ================= */
+  var scenesEl=document.getElementById('scenes');
+  DATA.scenes.forEach(function(sc, i){
+    var d=document.createElement('div');
+    d.className='sc'+(i===0?' on':'');
+    d.dataset.i=i;
+    var er='—';
+    if(sc.ly&&sc.ry){
+      var w=Math.max(sc.ly.err_axis||0, sc.ry.err_axis||0);
+      er = w.toFixed(2)+'mm';
+    }
+    var pass = sc.metrics.pass_axes20 && sc.metrics.pass_time60;
+    d.innerHTML = '<span class="tag'+(sc.kind==='source'?' src':'')+'">'
+      + (sc.kind==='source'?'官方':'实车') + '</span>'
+      + '<span class="nm">'+sc.label.replace(/^(样例场景|实车)\s*/,'')+'</span>'
+      + '<span class="er '+(sc.ly&&sc.ry?(pass?'ok':'bad'):'')+'">'+er+'</span>';
+    d.onclick=function(){
+      [].forEach.call(scenesEl.children,function(x){x.classList.remove('on');});
+      d.classList.add('on');
+      select(i);
+    };
+    scenesEl.appendChild(d);
+  });
+
+  function select(i, view){
+    cur = DATA.scenes[i];
+    buildCloud(cur);
+    buildDet(cur);
+    fitView(cur, view || 'focus');
+    renderInfo(cur);
+  }
+
+  function f(x,n){ return (x===undefined||x===null)?'—':Number(x).toFixed(n===undefined?2:n); }
+  function renderInfo(sc){
+    var m=sc.metrics;
+    var pass = m.pass_axes20 && m.pass_time60;
+    var h='<h2>当前场景指标</h2>';
+    h+='<table class="k">';
+    h+='<tr><td>场景</td><td>'+sc.label+'</td></tr>';
+    h+='<tr><td>单帧用时</td><td>'+f(m.time,1)+' s &nbsp;<span class="pill '
+        +(m.pass_time60?'ok':'no')+'">'+(m.pass_time60?'≤60s':'超时')+'</span></td></tr>';
+    h+='<tr><td>候选盘 / 配对</td><td>'+(m.n_ports||0)+' / '+(m.n_pairs||0)+'</td></tr>';
+    [['ly','回收口 ly',COL.ly,'#ff5252'],['ry','加注口 ry',COL.ry,'#ffb020']].forEach(function(t){
+      var o=sc[t[0]]; if(!o) return;
+      h+='<tr><td colspan="2" style="padding-top:8px;border-top:1px solid #2a3240;font-weight:600">'
+         +'<span class="dot" style="background:'+t[3]+'"></span>'+t[1]
+         +(o.refined?' <span class="tag">遮挡修复</span>':'')+'</td></tr>';
+      h+='<tr><td>检出半径</td><td>'+f(o.radius,1)+' mm</td></tr>';
+      h+='<tr><td>法向 俯仰 / 偏航</td><td>'+f(o.pitch)+'° / '+f(o.yaw)+'°</td></tr>';
+      if(o.err_axis!==undefined){
+        var ok=o.err_axis<=20;
+        h+='<tr><td>圆心各轴最大误差</td><td class="'+(ok?'':'')+'"><span class="pill '
+           +(ok?'ok':'no')+'">'+f(o.err_axis)+' mm</span></td></tr>';
+        h+='<tr><td>圆心欧氏误差</td><td>'+f(o.err_3d)+' mm</td></tr>';
+      }
+    });
+    h+='<tr><td colspan="2" style="padding-top:8px;border-top:1px solid #2a3240"></td></tr>';
+    h+='<tr><td>两口法向夹角</td><td>'+f(m.normal_angle)+'°</td></tr>';
+    h+='<tr><td>连线⊥罐面法向偏离</td><td>'+f(m.perp_off)+'°</td></tr>';
+    h+='<tr><td>两口间距</td><td>'+f(m.distance,1)+' mm</td></tr>';
+    h+='</table>';
+    h+='<div style="margin-top:9px"><span class="pill '+(pass?'ok':'no')+'">'
+      +(pass?'整体判定 PASS':'整体判定 FAIL')+'</span>'
+      +(sc.kind==='source'?'<span style="font-size:10.5px;color:#8b949e;margin-left:7px">对照官方 coordinates.txt</span>'
+                          :'<span style="font-size:10.5px;color:#8b949e;margin-left:7px">对照 CC 手选真值</span>')
+      +'</div>';
+    document.getElementById('info').innerHTML=h;
+  }
+
+  /* ================= 图层 / 按钮 ================= */
+  document.getElementById('cCloud').onchange=function(){gCloud.visible=this.checked;};
+  document.getElementById('cDet'  ).onchange=function(){gDet.visible=this.checked;};
+  document.getElementById('cGt'   ).onchange=function(){gGt.visible=this.checked;};
+  document.getElementById('cErr'  ).onchange=function(){gErr.visible=this.checked;};
+  document.getElementById('cOth'  ).onchange=function(){gOth.visible=this.checked;};
+  var spin = (Q.spin==='1');
+  document.getElementById('cSpin').onchange=function(){spin=this.checked;};
+  [].forEach.call(document.querySelectorAll('#views button[data-v]'),function(b){
+    b.onclick=function(){ if(cur) fitView(cur, b.dataset.v); };
+  });
+
+  /* ---- 自动巡场：依次播放全部场景（答辩放映用） ---- */
+  var tour=null, ti=0;
+  var btnTour=document.getElementById('btnTour');
+  btnTour.onclick=function(){
+    if(tour){
+      clearInterval(tour); tour=null; btnTour.textContent='▶ 自动巡场（答辩播放）'; return;
+    }
+    btnTour.textContent='⏸ 停止巡场';
+    ti = Math.max(0, DATA.scenes.indexOf(cur));
+    tour = setInterval(function(){
+      ti = (ti+1) % DATA.scenes.length;
+      [].forEach.call(scenesEl.children,function(x,ix){ x.classList.toggle('on', ix===ti); });
+      select(ti, 'focus');
+    }, 4200);
+  };
+
+  /* ---- 保存当前视图为 PNG ---- */
+  document.getElementById('btnShot').onclick=function(){
+    renderer.render(scene, camera);
+    var url = renderer.domElement.toDataURL('image/png');
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = (cur ? cur.id : 'view') + '_三维可视化.png';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  };
+
+  /* ================= 渲染循环 ================= */
+  function resize(){
+    var w=cv.clientWidth, h=cv.clientHeight;
+    renderer.setSize(w,h,false);
+    camera.aspect=w/h; camera.updateProjectionMatrix();
+  }
+  window.addEventListener('resize',resize);
+  resize();
+
+  var last=0;
+  function loop(t){
+    requestAnimationFrame(loop);
+    if(spin){ cam.theta += 0.0035; applyCam(); }
+    renderer.render(scene,camera);
+    updateLabels();
+  }
+
+  document.getElementById('loading').style.display='none';
+  var i0 = parseInt(Q.scene||'0',10); if(isNaN(i0)||i0<0||i0>=DATA.scenes.length) i0=0;
+  [].forEach.call(scenesEl.children,function(x,ix){ x.classList.toggle('on', ix===i0); });
+  select(i0, Q.view||'focus');
+  loop(0);
+  window.__viewer_ready = true;
+}catch(e){
+  var el=document.getElementById('err');
+  el.style.display='flex';
+  el.textContent='初始化失败：'+(e && e.message ? e.message : e);
+  var ld=document.getElementById('loading'); if(ld) ld.style.display='none';
+  console.error(e);
+}
+})();
+</script>
+</body>
+</html>
