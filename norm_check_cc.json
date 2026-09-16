@@ -1,0 +1,222 @@
+[
+  {
+    "scene": "ICP_input0",
+    "port": "ry",
+    "pitch_cc": 0.567,
+    "yaw_cc": -1.459,
+    "pitch_det": 0.579,
+    "yaw_det": -1.521,
+    "dpitch": 0.011,
+    "dyaw": 0.062,
+    "pass_5deg": true
+  },
+  {
+    "scene": "ICP_input0",
+    "port": "ly",
+    "pitch_cc": 0.177,
+    "yaw_cc": -1.083,
+    "pitch_det": 0.21,
+    "yaw_det": -1.341,
+    "dpitch": 0.033,
+    "dyaw": 0.258,
+    "pass_5deg": true
+  },
+  {
+    "scene": "ICP_input1",
+    "port": "ry",
+    "pitch_cc": -2.126,
+    "yaw_cc": 5.269,
+    "pitch_det": -2.113,
+    "yaw_det": 5.085,
+    "dpitch": 0.013,
+    "dyaw": 0.184,
+    "pass_5deg": true
+  },
+  {
+    "scene": "ICP_input1",
+    "port": "ly",
+    "pitch_cc": -0.762,
+    "yaw_cc": 3.586,
+    "pitch_det": -0.849,
+    "yaw_det": 3.46,
+    "dpitch": 0.087,
+    "dyaw": 0.125,
+    "pass_5deg": true
+  },
+  {
+    "scene": "ICP_input2",
+    "port": "ry",
+    "pitch_cc": -2.208,
+    "yaw_cc": 0.83,
+    "pitch_det": -2.148,
+    "yaw_det": 0.848,
+    "dpitch": 0.06,
+    "dyaw": 0.019,
+    "pass_5deg": true
+  },
+  {
+    "scene": "ICP_input2",
+    "port": "ly",
+    "pitch_cc": 1.002,
+    "yaw_cc": -0.751,
+    "pitch_det": 0.615,
+    "yaw_det": -3.387,
+    "dpitch": 0.388,
+    "dyaw": 2.636,
+    "pass_5deg": true
+  },
+  {
+    "scene": "ICP_input3",
+    "port": "ry",
+    "pitch_cc": -0.836,
+    "yaw_cc": 3.437,
+    "pitch_det": -1.022,
+    "yaw_det": 3.402,
+    "dpitch": 0.185,
+    "dyaw": 0.035,
+    "pass_5deg": true
+  },
+  {
+    "scene": "ICP_input3",
+    "port": "ly",
+    "pitch_cc": 0.949,
+    "yaw_cc": 2.723,
+    "pitch_det": 1.064,
+    "yaw_det": 2.891,
+    "dpitch": 0.115,
+    "dyaw": 0.168,
+    "pass_5deg": true
+  },
+  {
+    "scene": "ICP_input4",
+    "port": "ry",
+    "pitch_cc": -2.426,
+    "yaw_cc": -0.277,
+    "pitch_det": -2.308,
+    "yaw_det": 0.088,
+    "dpitch": 0.118,
+    "dyaw": 0.365,
+    "pass_5deg": true
+  },
+  {
+    "scene": "ICP_input4",
+    "port": "ly",
+    "pitch_cc": -1.897,
+    "yaw_cc": 1.22,
+    "pitch_det": -1.712,
+    "yaw_det": 0.96,
+    "dpitch": 0.185,
+    "dyaw": 0.26,
+    "pass_5deg": true
+  },
+  {
+    "scene": "ICP_input5",
+    "port": "ry",
+    "pitch_cc": -2.085,
+    "yaw_cc": 5.847,
+    "pitch_det": -2.082,
+    "yaw_det": 5.833,
+    "dpitch": 0.003,
+    "dyaw": 0.014,
+    "pass_5deg": true
+  },
+  {
+    "scene": "ICP_input5",
+    "port": "ly",
+    "pitch_cc": -0.826,
+    "yaw_cc": 4.456,
+    "pitch_det": -0.784,
+    "yaw_det": 4.207,
+    "dpitch": 0.042,
+    "dyaw": 0.25,
+    "pass_5deg": true
+  },
+  {
+    "scene": "ICP_input6",
+    "port": "ry",
+    "pitch_cc": 0.679,
+    "yaw_cc": -0.607,
+    "pitch_det": 0.712,
+    "yaw_det": -0.598,
+    "dpitch": 0.033,
+    "dyaw": 0.009,
+    "pass_5deg": true
+  },
+  {
+    "scene": "ICP_input6",
+    "port": "ly",
+    "pitch_cc": -0.527,
+    "yaw_cc": -2.62,
+    "pitch_det": -0.399,
+    "yaw_det": -2.678,
+    "dpitch": 0.127,
+    "dyaw": 0.058,
+    "pass_5deg": true
+  },
+  {
+    "scene": "ICP_input7",
+    "port": "ry",
+    "pitch_cc": 0.193,
+    "yaw_cc": 0.541,
+    "pitch_det": 0.232,
+    "yaw_det": -0.509,
+    "dpitch": 0.04,
+    "dyaw": 1.05,
+    "pass_5deg": true
+  },
+  {
+    "scene": "ICP_input7",
+    "port": "ly",
+    "pitch_cc": -0.614,
+    "yaw_cc": 2.385,
+    "pitch_det": -0.353,
+    "yaw_det": 2.132,
+    "dpitch": 0.261,
+    "dyaw": 0.254,
+    "pass_5deg": true
+  },
+  {
+    "scene": "ICP_input8",
+    "port": "ry",
+    "pitch_cc": 0.588,
+    "yaw_cc": 0.623,
+    "pitch_det": -0.384,
+    "yaw_det": 0.393,
+    "dpitch": 0.972,
+    "dyaw": 0.23,
+    "pass_5deg": true
+  },
+  {
+    "scene": "ICP_input8",
+    "port": "ly",
+    "pitch_cc": 0.926,
+    "yaw_cc": 0.13,
+    "pitch_det": 1.173,
+    "yaw_det": 0.176,
+    "dpitch": 0.247,
+    "dyaw": 0.046,
+    "pass_5deg": true
+  },
+  {
+    "scene": "ICP_input9",
+    "port": "ry",
+    "pitch_cc": 0.151,
+    "yaw_cc": 1.333,
+    "pitch_det": 0.234,
+    "yaw_det": 1.297,
+    "dpitch": 0.083,
+    "dyaw": 0.036,
+    "pass_5deg": true
+  },
+  {
+    "scene": "ICP_input9",
+    "port": "ly",
+    "pitch_cc": 0.771,
+    "yaw_cc": 0.488,
+    "pitch_det": 1.15,
+    "yaw_det": 0.387,
+    "dpitch": 0.379,
+    "dyaw": 0.1,
+    "pass_5deg": true
+  }
+]
